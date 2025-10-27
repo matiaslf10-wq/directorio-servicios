@@ -261,8 +261,6 @@ export default function ServiceDirectory() {
           telefono: '',
           ubicacion: '',
           palabras_clave: '',
-          foto_url: '',
-          foto_public_id: ''
         });
         setShowForm(false);
         

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     console.log('📥 GET /api/proveedores - Iniciando petición');
     
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     console.log('✅ Proveedores encontrados:', data?.length || 0);
     
     return NextResponse.json(data || []);
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Error al obtener proveedores:', error);
     return NextResponse.json(
       { error: 'Error al obtener proveedores', details: error.message },
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     console.log('📤 POST /api/proveedores - Iniciando registro');
     
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       id: data[0].id,
       mensaje: 'Proveedor registrado exitosamente' 
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Error al crear proveedor:', error);
     return NextResponse.json(
       { error: 'Error al registrar proveedor', details: error.message },
