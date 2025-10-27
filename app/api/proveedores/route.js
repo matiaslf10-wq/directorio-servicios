@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     console.log('📥 GET /api/proveedores - Iniciando petición');
     
@@ -16,9 +16,7 @@ export async function GET(request) {
       .order('id', { ascending: false });
 
     if (search) {
-      query = query.or(
-        `nombre.ilike.%${search}%,servicio.ilike.%${search}%,ubicacion.ilike.%${search}%,palabras_clave.ilike.%${search}%`
-      );
+      query = query.or(`nombre.ilike.%${search}%,servicio.ilike.%${search}%,ubicacion.ilike.%${search}%,palabras_clave.ilike.%${search}%`);
     }
 
     const { data, error } = await query;
@@ -31,7 +29,7 @@ export async function GET(request) {
     console.log('✅ Proveedores encontrados:', data?.length || 0);
     
     return NextResponse.json(data || []);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error al obtener proveedores:', error);
     return NextResponse.json(
       { error: 'Error al obtener proveedores', details: error.message },
@@ -40,14 +38,14 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     console.log('📤 POST /api/proveedores - Iniciando registro');
     
     const body = await request.json();
     console.log('📋 Datos recibidos:', body);
     
-    const { nombre, servicio, email, telefono, ubicacion, palabras_clave, foto_url, foto_public_id } = body;
+    const { nombre, servicio, email, telefono, ubicacion, palabras_clave } = body;
 
     if (!nombre || !servicio || !email || !telefono || !ubicacion || !palabras_clave) {
       console.log('⚠️ Validación fallida - Campos faltantes');
@@ -65,9 +63,7 @@ export async function POST(request) {
         email,
         telefono,
         ubicacion,
-        palabras_clave,
-        foto_url: foto_url || null,
-        foto_public_id: foto_public_id || null
+        palabras_clave
       }])
       .select();
 
@@ -82,7 +78,7 @@ export async function POST(request) {
       id: data[0].id,
       mensaje: 'Proveedor registrado exitosamente' 
     }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error al crear proveedor:', error);
     return NextResponse.json(
       { error: 'Error al registrar proveedor', details: error.message },

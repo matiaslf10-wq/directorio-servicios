@@ -158,9 +158,7 @@ export default function ServiceDirectory() {
     email: '',
     telefono: '',
     ubicacion: '',
-    palabras_clave: '',
-    foto_url: '',
-    foto_public_id: ''
+    palabras_clave: ''
   });
 
   const fetchProviders = useCallback(async () => {
@@ -358,56 +356,8 @@ export default function ServiceDirectory() {
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Registrar Nuevo Proveedor</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Upload de Imagen */}
-              <div className="md:col-span-2">
-                <label className="block text-gray-700 font-semibold mb-2">Foto del Proveedor</label>
-                <CldUploadWidget
-                  uploadPreset="directorio_proveedores"
-                  onSuccess={(result: unknown) => {
-                    const uploadResult = result as { info: { secure_url: string; public_id: string } };
-                    setFormData({
-                      ...formData,
-                      foto_url: uploadResult.info.secure_url,
-                      foto_public_id: uploadResult.info.public_id
-                    });
-                  }}
-                >
-                  {({ open }) => (
-                    <div className="flex items-center gap-4">
-                      {formData.foto_url ? (
-                        <div className="relative">
-                          <img 
-                            src={formData.foto_url} 
-                            alt="Preview" 
-                            className="w-32 h-32 object-cover rounded-lg border-2 border-indigo-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, foto_url: '', foto_public_id: '' })}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                          <Upload size={32} className="text-gray-400" />
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => open && open()}
-                        className="bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-200 transition font-semibold flex items-center gap-2"
-                      >
-                        <Upload size={18} />
-                        {formData.foto_url ? 'Cambiar Foto' : 'Subir Foto'}
-                      </button>
-                    </div>
-                  )}
-                </CldUploadWidget>
-                <p className="text-xs text-gray-500 mt-2">Sube una foto del proveedor (opcional)</p>
-              </div>
-
+              {/* Nota: Upload de imagen deshabilitado por ahora */}
+              
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Nombre Completo *</label>
                 <input
