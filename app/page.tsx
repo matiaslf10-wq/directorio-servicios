@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut, Upload, X } from 'lucide-react';
-import { CldUploadWidget } from 'next-cloudinary';
+import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut } from 'lucide-react';
 
 // Tipos
 interface Usuario {
@@ -35,9 +34,10 @@ function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
   const [error, setError] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const target = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [target.name]: target.value
     });
     setError('');
   };
