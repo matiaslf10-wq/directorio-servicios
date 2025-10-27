@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut, Upload, X } from 'lucide-react';
 import { CldUploadWidget } from 'next-cloudinary';
 
@@ -20,10 +20,12 @@ interface Proveedor {
   telefono: string;
   ubicacion: string;
   palabras_clave: string;
+  foto_url?: string;
+  foto_public_id?: string;
   fecha_registro?: string;
 }
 
-// Importar el componente de Login
+// Componente de Login
 function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
   const [formData, setFormData] = useState({
     usuario: '',
@@ -32,7 +34,7 @@ function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -40,7 +42,7 @@ function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
     setError('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
@@ -51,8 +53,6 @@ function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
 
     try {
       setLoading(true);
-      console.log('🔐 Intentando login...');
-
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -64,14 +64,12 @@ function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
       const data = await response.json();
 
       if (response.ok) {
-        console.log('✅ Login exitoso');
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         onLogin(data.usuario);
       } else {
         setError(data.error || 'Error al iniciar sesión');
       }
-    } catch (error) {
-      console.error('❌ Error:', error);
+    } catch {
       setError('Error de conexión');
     } finally {
       setLoading(false);
@@ -89,7 +87,7 @@ function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
           <p className="text-gray-600 mt-2">Inicia sesión para continuar</p>
         </div>
 
-        <div>
+        <form onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
               {error}
@@ -126,14 +124,14 @@ function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
             </div>
 
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={loading}
               className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </button>
           </div>
-        </div>
+        </form>
 
         <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-600 font-semibold mb-2">Usuarios de prueba:</p>
@@ -160,17 +158,40 @@ export default function ServiceDirectory() {
     email: '',
     telefono: '',
     ubicacion: '',
-    palabras_clave: ''
+    palabras_clave: '',
+    foto_url: '',
+    foto_public_id: ''
   });
+
+  const fetchProviders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const url = searchTerm 
+        ? `/api/proveedores?search=${encodeURIComponent(searchTerm)}`
+        : '/api/proveedores';
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setProviders(data);
+    } catch (error) {
+      console.error('❌ Error al cargar proveedores:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm]);
 
   // Verificar si hay sesión activa al cargar
   useEffect(() => {
     const savedUser = localStorage.getItem('usuario');
     if (savedUser) {
-      const user = JSON.parse(savedUser);
+      const user = JSON.parse(savedUser) as Usuario;
       setCurrentUser(user);
       setIsAuthenticated(true);
-      console.log('✅ Sesión restaurada:', user.usuario);
     }
     setLoading(false);
   }, []);
@@ -178,25 +199,21 @@ export default function ServiceDirectory() {
   // Cargar proveedores cuando esté autenticado
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('🚀 Usuario autenticado - Cargando proveedores');
       fetchProviders();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchProviders]);
 
   // Efecto para búsqueda
   useEffect(() => {
     if (!isAuthenticated) return;
     
     const timeoutId = setTimeout(() => {
-      if (searchTerm) {
-        console.log('🔍 Buscando:', searchTerm);
-        fetchProviders();
-      }
+      fetchProviders();
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [searchTerm, isAuthenticated, fetchProviders]);
 
-  const handleLogin = (user) => {
+  const handleLogin = (user: Usuario) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
   };
@@ -206,29 +223,60 @@ export default function ServiceDirectory() {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setProviders([]);
-    console.log('👋 Sesión cerrada');
   };
 
-  const fetchProviders = async () => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    
+    if (!formData.nombre || !formData.servicio || !formData.email || 
+        !formData.telefono || !formData.ubicacion || !formData.palabras_clave) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
     try {
       setLoading(true);
-      const url = searchTerm 
-        ? `/api/proveedores?search=${encodeURIComponent(searchTerm)}`
-        : '/api/proveedores';
       
-      console.log('🔄 Cargando proveedores desde:', url);
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
+      const response = await fetch('/api/proveedores', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
       const data = await response.json();
-      console.log('✅ Proveedores cargados:', data.length, 'registros');
-      setProviders(data);
+
+      if (response.ok) {
+        alert('¡Proveedor registrado exitosamente! ID: ' + data.id);
+        setFormData({
+          nombre: '',
+          servicio: '',
+          email: '',
+          telefono: '',
+          ubicacion: '',
+          palabras_clave: '',
+          foto_url: '',
+          foto_public_id: ''
+        });
+        setShowForm(false);
+        
+        setTimeout(() => {
+          fetchProviders();
+        }, 500);
+      } else {
+        alert(`Error al registrar: ${data.error || 'Error desconocido'}`);
+      }
     } catch (error) {
-      console.error('❌ Error al cargar proveedores:', error);
-      alert('Error al cargar los proveedores: ' + error.message);
+      console.error('❌ Error al enviar formulario:', error);
+      alert('Error de conexión');
     } finally {
       setLoading(false);
     }
@@ -249,67 +297,6 @@ export default function ServiceDirectory() {
   }
 
   // Usuario autenticado - mostrar directorio
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    
-    if (!formData.nombre || !formData.servicio || !formData.email || 
-        !formData.telefono || !formData.ubicacion || !formData.palabras_clave) {
-      alert('Por favor completa todos los campos');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      console.log('📤 Enviando datos:', formData);
-      
-      const response = await fetch('/api/proveedores', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-      console.log('📥 Respuesta del servidor:', data);
-
-      if (response.ok) {
-        alert('¡Proveedor registrado exitosamente! ID: ' + data.id);
-        setFormData({
-          nombre: '',
-          servicio: '',
-          email: '',
-          telefono: '',
-          ubicacion: '',
-          palabras_clave: ''
-        });
-        setShowForm(false);
-        
-        // Esperar un momento y recargar
-        console.log('🔄 Recargando lista de proveedores...');
-        setTimeout(() => {
-          fetchProviders();
-        }, 500);
-      } else {
-        console.error('❌ Error del servidor:', data);
-        alert(`Error al registrar: ${data.error || 'Error desconocido'}`);
-      }
-    } catch (error) {
-      console.error('❌ Error al enviar formulario:', error);
-      alert(`Error de conexión: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -371,6 +358,56 @@ export default function ServiceDirectory() {
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Registrar Nuevo Proveedor</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Upload de Imagen */}
+              <div className="md:col-span-2">
+                <label className="block text-gray-700 font-semibold mb-2">Foto del Proveedor</label>
+                <CldUploadWidget
+                  uploadPreset="directorio_proveedores"
+                  onSuccess={(result: unknown) => {
+                    const uploadResult = result as { info: { secure_url: string; public_id: string } };
+                    setFormData({
+                      ...formData,
+                      foto_url: uploadResult.info.secure_url,
+                      foto_public_id: uploadResult.info.public_id
+                    });
+                  }}
+                >
+                  {({ open }) => (
+                    <div className="flex items-center gap-4">
+                      {formData.foto_url ? (
+                        <div className="relative">
+                          <img 
+                            src={formData.foto_url} 
+                            alt="Preview" 
+                            className="w-32 h-32 object-cover rounded-lg border-2 border-indigo-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, foto_url: '', foto_public_id: '' })}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                          <Upload size={32} className="text-gray-400" />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => open && open()}
+                        className="bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-200 transition font-semibold flex items-center gap-2"
+                      >
+                        <Upload size={18} />
+                        {formData.foto_url ? 'Cambiar Foto' : 'Subir Foto'}
+                      </button>
+                    </div>
+                  )}
+                </CldUploadWidget>
+                <p className="text-xs text-gray-500 mt-2">Sube una foto del proveedor (opcional)</p>
+              </div>
+
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Nombre Completo *</label>
                 <input
@@ -475,31 +512,46 @@ export default function ServiceDirectory() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {providers.map((provider: Proveedor) => (
-                <div key={provider.id} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-800">{provider.nombre}</h3>
-                    <div className="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-sm font-semibold">
-                      {provider.servicio}
+                <div key={provider.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition">
+                  {/* Imagen del proveedor */}
+                  {provider.foto_url ? (
+                    <img 
+                      src={provider.foto_url} 
+                      alt={provider.nombre}
+                      className="w-full h-48 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
+                      <Briefcase size={64} className="text-indigo-400" />
                     </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Mail size={18} className="text-indigo-500" />
-                      <span className="text-sm">{provider.email}</span>
+                  )}
+                  
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-gray-800">{provider.nombre}</h3>
+                      <div className="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-sm font-semibold">
+                        {provider.servicio}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Phone size={18} className="text-indigo-500" />
-                      <span className="text-sm">{provider.telefono}</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Mail size={18} className="text-indigo-500" />
+                        <span className="text-sm">{provider.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Phone size={18} className="text-indigo-500" />
+                        <span className="text-sm">{provider.telefono}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <MapPin size={18} className="text-indigo-500" />
+                        <span className="text-sm">{provider.ubicacion}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <MapPin size={18} className="text-indigo-500" />
-                      <span className="text-sm">{provider.ubicacion}</span>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-xs text-gray-500">
+                        <span className="font-semibold">Keywords:</span> {provider.palabras_clave}
+                      </p>
                     </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <p className="text-xs text-gray-500">
-                      <span className="font-semibold">Keywords:</span> {provider.palabras_clave}
-                    </p>
                   </div>
                 </div>
               ))}

@@ -1,13 +1,25 @@
 'use client';
+
 import { useState } from 'react';
 
-export default function LoginPage({ onLogin }) {
+interface Usuario {
+  id: number;
+  usuario: string;
+  nombre_completo: string;
+  email: string;
+}
+
+interface LoginPageProps {
+  onLogin: (user: Usuario) => void;
+}
+
+export default function LoginPage({ onLogin }: LoginPageProps) {
   const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -52,7 +64,7 @@ export default function LoginPage({ onLogin }) {
             <input
               type="text"
               value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsuario(e.target.value)}
               className="w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-400"
               placeholder="Tu usuario"
               required
@@ -66,7 +78,7 @@ export default function LoginPage({ onLogin }) {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               className="w-full p-2 border rounded-md focus:ring-2 focus:ring-indigo-400"
               placeholder="Tu contraseña"
               required
