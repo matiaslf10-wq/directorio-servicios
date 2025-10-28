@@ -288,9 +288,9 @@ export default function ServiceDirectory() {
   }
 
   // Si no está autenticado, mostrar login
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
+  //if (!isAuthenticated) {
+  //  return <LoginPage onLogin={handleLogin} />;
+ // }
 
   // Usuario autenticado - mostrar directorio
   return (
