@@ -159,6 +159,7 @@ export default function ServiceDirectory() {
             <button
               onClick={() => setShowForm(!showForm)}
               className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 font-semibold"
+              suppressHydrationWarning
             >
               <UserPlus size={20} />
               Registrarme
@@ -243,6 +244,7 @@ export default function ServiceDirectory() {
                   onClick={handleSubmit}
                   disabled={loading}
                   className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  suppressHydrationWarning
                 >
                   {loading ? <Loader className="animate-spin" size={20} /> : null}
                   {loading ? 'Registrando...' : 'Registrar'}
@@ -252,6 +254,7 @@ export default function ServiceDirectory() {
                   onClick={() => setShowForm(false)}
                   disabled={loading}
                   className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition font-semibold disabled:opacity-50"
+                  suppressHydrationWarning
                 >
                   Cancelar
                 </button>
