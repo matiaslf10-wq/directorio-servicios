@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut, Edit, X } from 'lucide-react';
+import Image from 'next/image';
 
 // Tipos
 interface Usuario {
@@ -319,6 +320,10 @@ export default function ServiceDirectory() {
   };
 
   const handleEdit = (provider: Proveedor) => {
+    console.log('✏️ Intentando editar proveedor:', provider.id);
+    console.log('👤 Usuario actual:', currentUser);
+    console.log('🆔 Proveedor ID del usuario:', currentUser?.proveedor_id);
+    
     if (!isAuthenticated) {
       alert('Debes iniciar sesión para editar tu perfil');
       setShowLogin(true);
@@ -326,7 +331,7 @@ export default function ServiceDirectory() {
     }
 
     if (currentUser?.proveedor_id !== provider.id) {
-      alert('Solo puedes editar tu propio perfil');
+      alert(`Solo puedes editar tu propio perfil. Tu proveedor_id: ${currentUser?.proveedor_id}, Proveedor seleccionado: ${provider.id}`);
       return;
     }
 

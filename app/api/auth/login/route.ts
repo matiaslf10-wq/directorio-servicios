@@ -1,9 +1,32 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+interface ProveedorData {
+  id: number;
+  nombre: string;
+  servicio: string;
+  email: string;
+  telefono: string;
+  ubicacion: string;
+  palabras_clave: string;
+  foto_url?: string;
+  fecha_registro?: string;
+}
+
+interface UsuarioData {
+  id: number;
+  usuario: string;
+  password: string;
+  nombre_completo: string;
+  email: string;
+  proveedor_id: number | null;
+  fecha_creacion?: string;
+  proveedores?: ProveedorData | ProveedorData[] | null;
+}
 
 export async function POST(request: NextRequest) {
-  try {
-    console.log('🔐 POST /api/auth/login - Intentando iniciar sesión');
+  try {console.log('🔐 POST /api/auth/login - Intentando iniciar sesión');
     
     const body = await request.json();
     const { usuario, password } = body;
