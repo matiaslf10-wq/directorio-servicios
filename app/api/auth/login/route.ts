@@ -1,7 +1,7 @@
-import pool from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     console.log('🔐 POST /api/auth/login - Intentando iniciar sesión');
     
@@ -16,10 +16,14 @@ export async function POST(request) {
     }
 
     // Buscar usuario en la base de datos
-    const query = 'SELECT * FROM usuarios WHERE usuario = ? AND password = ?';
-    const [rows] = await pool.execute(query, [usuario, password]);
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('usuario', usuario)
+      .eq('password', password)
+      .single();
 
-    if (rows.length === 0) {
+    if (error || !data) {
       console.log('❌ Credenciales inválidas para:', usuario);
       return NextResponse.json(
         { error: 'Usuario o contraseña incorrectos' },
@@ -27,20 +31,19 @@ export async function POST(request) {
       );
     }
 
-    const user = rows[0];
-    console.log('✅ Login exitoso para:', user.usuario);
+    console.log('✅ Login exitoso para:', data.usuario);
 
     // Retornar datos del usuario (sin la contraseña)
     return NextResponse.json({
       success: true,
       usuario: {
-        id: user.id,
-        usuario: user.usuario,
-        nombre_completo: user.nombre_completo,
-        email: user.email
+        id: data.id,
+        usuario: data.usuario,
+        nombre_completo: data.nombre_completo,
+        email: data.email
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error en login:', error);
     return NextResponse.json(
       { error: 'Error al iniciar sesión', details: error.message },
