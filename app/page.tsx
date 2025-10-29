@@ -1,16 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut } from 'lucide-react';
+import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader } from 'lucide-react';
 
 // Tipos
-interface Usuario {
-  id: number;
-  usuario: string;
-  nombre_completo: string;
-  email: string;
-}
-
 interface Proveedor {
   id: number;
   nombre: string;
@@ -20,138 +13,14 @@ interface Proveedor {
   ubicacion: string;
   palabras_clave: string;
   foto_url?: string;
-  foto_public_id?: string;
   fecha_registro?: string;
 }
 
-// Componente de Login
-function LoginPage({ onLogin }: { onLogin: (user: Usuario) => void }) {
-  const [formData, setFormData] = useState({
-    usuario: '',
-    password: ''
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const target = e.target;
-    setFormData({
-      ...formData,
-      [target.name]: target.value
-    });
-    setError('');
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
-
-    if (!formData.usuario || !formData.password) {
-      setError('Por favor completa todos los campos');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('usuario', JSON.stringify(data.usuario));
-        onLogin(data.usuario);
-      } else {
-        setError(data.error || 'Error al iniciar sesión');
-      }
-    } catch {
-      setError('Error de conexión');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-4">
-            <Briefcase size={32} className="text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800">Directorio de Servicios</h1>
-          <p className="text-gray-600 mt-2">Inicia sesión para continuar</p>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Usuario</label>
-              <input
-                type="text"
-                name="usuario"
-                value={formData.usuario}
-                onChange={handleInputChange}
-                placeholder="Ingresa tu usuario"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                disabled={loading}
-                suppressHydrationWarning
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Contraseña</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Ingresa tu contraseña"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-                disabled={loading}
-                suppressHydrationWarning
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            </button>
-          </div>
-        </form>
-
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-600 font-semibold mb-2">Usuarios de prueba:</p>
-          <div className="text-xs text-gray-500 space-y-1">
-            <p>👤 Usuario: <span className="font-mono bg-white px-2 py-1 rounded">admin</span> / Contraseña: <span className="font-mono bg-white px-2 py-1 rounded">admin123</span></p>
-            <p>👤 Usuario: <span className="font-mono bg-white px-2 py-1 rounded">usuario1</span> / Contraseña: <span className="font-mono bg-white px-2 py-1 rounded">pass123</span></p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function ServiceDirectory() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [providers, setProviders] = useState<Proveedor[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showForm, setShowForm] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [formData, setFormData] = useState({
     nombre: '',
     servicio: '',
@@ -168,6 +37,7 @@ export default function ServiceDirectory() {
         ? `/api/proveedores?search=${encodeURIComponent(searchTerm)}`
         : '/api/proveedores';
       
+      console.log('🔄 Cargando proveedores desde:', url);
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -175,6 +45,7 @@ export default function ServiceDirectory() {
       }
       
       const data = await response.json();
+      console.log('✅ Proveedores cargados:', data.length);
       setProviders(data);
     } catch (error) {
       console.error('❌ Error al cargar proveedores:', error);
@@ -183,45 +54,11 @@ export default function ServiceDirectory() {
     }
   }, [searchTerm]);
 
-  // Verificar si hay sesión activa al cargar
+  // Cargar proveedores al montar el componente
   useEffect(() => {
-    const savedUser = localStorage.getItem('usuario');
-    if (savedUser) {
-      const user = JSON.parse(savedUser) as Usuario;
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
-  }, []);
-
-  // Cargar proveedores cuando esté autenticado
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchProviders();
-    }
-  }, [isAuthenticated, fetchProviders]);
-
-  // Efecto para búsqueda
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    
-    const timeoutId = setTimeout(() => {
-      fetchProviders();
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, isAuthenticated, fetchProviders]);
-
-  const handleLogin = (user: Usuario) => {
-    setCurrentUser(user);
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('usuario');
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    setProviders([]);
-  };
+    console.log('🚀 Componente montado - Cargando proveedores');
+    fetchProviders();
+  }, [fetchProviders]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -239,8 +76,16 @@ export default function ServiceDirectory() {
       return;
     }
 
+    // Validación de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert('Por favor ingresa un email válido');
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('📤 Enviando datos:', formData);
       
       const response = await fetch('/api/proveedores', {
         method: 'POST',
@@ -251,75 +96,48 @@ export default function ServiceDirectory() {
       });
 
       const data = await response.json();
+      console.log('📥 Respuesta:', data);
 
       if (response.ok) {
-        alert('¡Proveedor registrado exitosamente! ID: ' + data.id);
+        alert('¡Proveedor registrado exitosamente!');
         setFormData({
           nombre: '',
           servicio: '',
           email: '',
           telefono: '',
           ubicacion: '',
-          palabras_clave: '',
+          palabras_clave: ''
         });
         setShowForm(false);
         
+        // Recargar proveedores
         setTimeout(() => {
           fetchProviders();
         }, 500);
+      } else if (response.status === 409) {
+        // Error de duplicado
+        alert(`⚠️ ${data.error}`);
       } else {
         alert(`Error al registrar: ${data.error || 'Error desconocido'}`);
       }
     } catch (error) {
       console.error('❌ Error al enviar formulario:', error);
-      alert('Error de conexión');
+      alert('Error de conexión con el servidor');
     } finally {
       setLoading(false);
     }
   };
 
-  // Si está cargando la verificación de sesión
-  if (loading && !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <Loader className="animate-spin text-indigo-600" size={48} />
-      </div>
-    );
-  }
-
-  // Si no está autenticado, mostrar login
-  //if (!isAuthenticated) {
-  //  return <LoginPage onLogin={handleLogin} />;
- // }
-
-  // Usuario autenticado - mostrar directorio
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <header className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-indigo-600 flex items-center gap-3">
-                <Briefcase size={40} />
-                Directorio de Servicios
-              </h1>
-              <p className="text-gray-600 mt-2">Encuentra profesionales o registra tus servicios</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Bienvenido,</p>
-                <p className="font-semibold text-gray-800">{currentUser?.nombre_completo}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-2 font-semibold"
-              >
-                <LogOut size={18} />
-                Salir
-              </button>
-            </div>
-          </div>
+          <h1 className="text-4xl font-bold text-indigo-600 flex items-center gap-3">
+            <Briefcase size={40} />
+            Directorio de Servicios
+          </h1>
+          <p className="text-gray-600 mt-2">Encuentra profesionales o registra tus servicios</p>
         </div>
       </header>
 
@@ -341,7 +159,6 @@ export default function ServiceDirectory() {
             <button
               onClick={() => setShowForm(!showForm)}
               className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 font-semibold"
-              suppressHydrationWarning
             >
               <UserPlus size={20} />
               Registrarme
@@ -354,8 +171,6 @@ export default function ServiceDirectory() {
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Registrar Nuevo Proveedor</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Nota: Upload de imagen deshabilitado por ahora */}
-              
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Nombre Completo *</label>
                 <input
@@ -433,6 +248,7 @@ export default function ServiceDirectory() {
                   {loading ? 'Registrando...' : 'Registrar'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowForm(false)}
                   disabled={loading}
                   className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition font-semibold disabled:opacity-50"

@@ -1,7 +1,9 @@
+// app/api/proveedores/route.ts - Con Supabase
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     console.log('📥 GET /api/proveedores - Iniciando petición');
     
@@ -30,15 +32,16 @@ export async function GET(request) {
     
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('❌ Error al obtener proveedores:', error);
+    const err = error as Error;
+    console.error('❌ Error al obtener proveedores:', err);
     return NextResponse.json(
-      { error: 'Error al obtener proveedores', details: error.message },
+      { error: 'Error al obtener proveedores', details: err.message },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     console.log('📤 POST /api/proveedores - Iniciando registro');
     
@@ -52,6 +55,36 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'Todos los campos son obligatorios' },
         { status: 400 }
+      );
+    }
+
+    // Verificar si ya existe un proveedor con el mismo email
+    const { data: existingProvider } = await supabase
+      .from('proveedores')
+      .select('id, nombre, email')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingProvider) {
+      console.log('⚠️ Email ya registrado:', email);
+      return NextResponse.json(
+        { error: `El email ${email} ya está registrado para ${existingProvider.nombre}` },
+        { status: 409 }
+      );
+    }
+
+    // Verificar si ya existe un proveedor con el mismo teléfono
+    const { data: existingPhone } = await supabase
+      .from('proveedores')
+      .select('id, nombre, telefono')
+      .eq('telefono', telefono)
+      .maybeSingle();
+
+    if (existingPhone) {
+      console.log('⚠️ Teléfono ya registrado:', telefono);
+      return NextResponse.json(
+        { error: `El teléfono ${telefono} ya está registrado para ${existingPhone.nombre}` },
+        { status: 409 }
       );
     }
 
@@ -79,9 +112,10 @@ export async function POST(request) {
       mensaje: 'Proveedor registrado exitosamente' 
     }, { status: 201 });
   } catch (error) {
-    console.error('❌ Error al crear proveedor:', error);
+    const err = error as Error;
+    console.error('❌ Error al crear proveedor:', err);
     return NextResponse.json(
-      { error: 'Error al registrar proveedor', details: error.message },
+      { error: 'Error al registrar proveedor', details: err.message },
       { status: 500 }
     );
   }
