@@ -26,7 +26,8 @@ interface UsuarioData {
 }
 
 export async function POST(request: NextRequest) {
-  try {console.log('🔐 POST /api/auth/login - Intentando iniciar sesión');
+  try {
+    console.log('🔐 POST /api/auth/login - Intentando iniciar sesión');
     
     const body = await request.json();
     const { usuario, password } = body;
@@ -66,10 +67,14 @@ export async function POST(request: NextRequest) {
         email: data.email
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error en login:', error);
+
+    const message =
+      error instanceof Error ? error.message : 'Error desconocido';
+
     return NextResponse.json(
-      { error: 'Error al iniciar sesión', details: error.message },
+      { error: 'Error al iniciar sesión', details: message },
       { status: 500 }
     );
   }
