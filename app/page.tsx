@@ -199,6 +199,8 @@ export default function ServiceDirectory() {
   }, [fetchProviders]);
 
   const handleLogin = (user: Usuario) => {
+    console.log('👤 Usuario logueado:', user);
+    console.log('🆔 Proveedor ID:', user.proveedor_id);
     setCurrentUser(user);
     setIsAuthenticated(true);
     setShowLogin(false);
@@ -393,6 +395,7 @@ export default function ServiceDirectory() {
               <button
                 onClick={() => setShowLogin(true)}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold"
+                suppressHydrationWarning
               >
                 Iniciar Sesión
               </button>
