@@ -42,10 +42,13 @@ export async function POST(request: NextRequest) {
     // Buscar usuario en la base de datos
     const { data, error } = await supabase
       .from('usuarios')
-      .select('*')
+      .select(`
+        *,
+        proveedores (*)
+      `)
       .eq('usuario', usuario)
       .eq('password', password)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       console.log('❌ Credenciales inválidas para:', usuario);
@@ -55,26 +58,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Login exitoso para:', data.usuario);
+    const userData = data as UsuarioData;
+    console.log('✅ Login exitoso para:', userData.usuario);
+    console.log('🆔 Proveedor ID en BD:', userData.proveedor_id);
+    console.log('📋 Datos completos:', JSON.stringify(userData, null, 2));
 
-    // Retornar datos del usuario (sin la contraseña)
+    // Verificar que el proveedor_id exista
+    if (!userData.proveedor_id) {
+      console.warn('⚠️ Usuario sin proveedor vinculado');
+    }
+
+    // Retornar datos del usuario y proveedor
     return NextResponse.json({
       success: true,
       usuario: {
-        id: data.id,
-        usuario: data.usuario,
-        nombre_completo: data.nombre_completo,
-        email: data.email
+        id: userData.id,
+        usuario: userData.usuario,
+        nombre_completo: userData.nombre_completo,
+        email: userData.email,
+        proveedor_id: userData.proveedor_id,
+        proveedor: Array.isArray(userData.proveedores) ? userData.proveedores[0] : userData.proveedores
       }
     });
-  } catch (error: unknown) {
-    console.error('❌ Error en login:', error);
-
-    const message =
-      error instanceof Error ? error.message : 'Error desconocido';
-
+  } catch (error) {
+    const err = error as Error;
+    console.error('❌ Error en login:', err);
     return NextResponse.json(
-      { error: 'Error al iniciar sesión', details: message },
+      { error: 'Error al iniciar sesión', details: err.message },
       { status: 500 }
     );
   }

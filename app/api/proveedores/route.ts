@@ -139,16 +139,18 @@ export async function POST(request: NextRequest) {
 
     if (usuarioError) {
       // Si falla la creación del usuario, eliminar el proveedor
-      await supabase.from('proveedores').delete().eq('id', proveedorData.id);
       console.error('❌ Error al crear usuario:', usuarioError);
+      await supabase.from('proveedores').delete().eq('id', proveedorData.id);
       throw usuarioError;
     }
 
     console.log('✅ Usuario creado. ID:', usuarioData.id);
+    console.log('🔗 Usuario vinculado a proveedor_id:', usuarioData.proveedor_id);
     
     return NextResponse.json({ 
       id: proveedorData.id,
       usuario_id: usuarioData.id,
+      proveedor_id: usuarioData.proveedor_id,
       mensaje: 'Proveedor y usuario registrados exitosamente' 
     }, { status: 201 });
   } catch (error) {
