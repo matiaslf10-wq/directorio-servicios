@@ -5,13 +5,15 @@ import type { NextRequest } from 'next/server';
 // GET - Obtener imágenes de un proveedor
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const { data, error } = await supabase
       .from('proveedor_imagenes')
       .select('*')
-      .eq('proveedor_id', params.id)
+      .eq('proveedor_id', id)
       .order('orden', { ascending: true });
 
     if (error) throw error;
@@ -29,9 +31,10 @@ export async function GET(
 // POST - Agregar nueva imagen
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { imagen_url, public_id, usuario_id } = body;
 
@@ -42,7 +45,7 @@ export async function POST(
       .eq('id', usuario_id)
       .single();
 
-    if (!usuario || usuario.proveedor_id !== parseInt(params.id)) {
+    if (!usuario || usuario.proveedor_id !== parseInt(id)) {
       return NextResponse.json(
         { error: 'No tienes permiso para agregar imágenes a este proveedor' },
         { status: 403 }
@@ -53,7 +56,7 @@ export async function POST(
     const { data: lastImage } = await supabase
       .from('proveedor_imagenes')
       .select('orden')
-      .eq('proveedor_id', params.id)
+      .eq('proveedor_id', id)
       .order('orden', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -64,7 +67,7 @@ export async function POST(
     const { data, error } = await supabase
       .from('proveedor_imagenes')
       .insert([{
-        proveedor_id: parseInt(params.id),
+        proveedor_id: parseInt(id),
         imagen_url,
         public_id,
         orden: nuevoOrden
