@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut, Edit, X } from 'lucide-react';
+import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut, Edit, X, ChevronLeft, ChevronRight, Upload as UploadIcon, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import { CldUploadWidget } from 'next-cloudinary';
 
 // Tipos
 interface Usuario {
@@ -24,6 +25,181 @@ interface Proveedor {
   palabras_clave: string;
   foto_url?: string;
   fecha_registro?: string;
+  imagenes?: ProveedorImagen[];
+}
+
+interface ProveedorImagen {
+  id: number;
+  proveedor_id: number;
+  imagen_url: string;
+  public_id: string;
+  orden: number;
+}
+
+// Componente de Galería de Imágenes
+function ImageGallery({ 
+  images, 
+  proveedorId,
+  isOwner,
+  usuarioId,
+  onImageAdded,
+  onImageDeleted
+}: { 
+  images: ProveedorImagen[];
+  proveedorId: number;
+  isOwner: boolean;
+  usuarioId?: number;
+  onImageAdded: () => void;
+  onImageDeleted: () => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [uploading, setUploading] = useState(false);
+
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const handleUploadSuccess = async (result: unknown) => {
+    const uploadResult = result as { info: { secure_url: string; public_id: string } };
+    
+    try {
+      setUploading(true);
+      const response = await fetch(`/api/proveedores/${proveedorId}/imagenes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imagen_url: uploadResult.info.secure_url,
+          public_id: uploadResult.info.public_id,
+          usuario_id: usuarioId
+        })
+      });
+
+      if (response.ok) {
+        onImageAdded();
+      } else {
+        alert('Error al guardar la imagen');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al subir imagen');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (imagenId: number) => {
+    if (!confirm('¿Eliminar esta imagen?')) return;
+
+    try {
+      const response = await fetch(
+        `/api/proveedores/${proveedorId}/imagenes?imagen_id=${imagenId}&usuario_id=${usuarioId}`,
+        { method: 'DELETE' }
+      );
+
+      if (response.ok) {
+        onImageDeleted();
+        if (currentIndex >= images.length - 1) {
+          setCurrentIndex(Math.max(0, images.length - 2));
+        }
+      } else {
+        alert('Error al eliminar imagen');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar imagen');
+    }
+  };
+
+  if (images.length === 0 && !isOwner) {
+    return (
+      <div className="w-full h-48 bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
+        <Briefcase size={64} className="text-indigo-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-48 bg-gray-100">
+      {images.length > 0 ? (
+        <>
+          <div className="relative w-full h-full">
+            <Image
+              src={images[currentIndex].imagen_url}
+              alt={`Imagen ${currentIndex + 1}`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </div>
+
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={prevImage}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                onClick={nextImage}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </>
+          )}
+
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            {images.map((_, index) => (
+              <div
+                key={index}
+                className={`w-2 h-2 rounded-full ${
+                  index === currentIndex ? 'bg-white' : 'bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+
+          {isOwner && (
+            <button
+              onClick={() => handleDelete(images[currentIndex].id)}
+              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </>
+      ) : (
+        <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
+          <Briefcase size={64} className="text-indigo-400" />
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="absolute bottom-2 right-2">
+          <CldUploadWidget
+            uploadPreset="directorio_proveedores"
+            onSuccess={handleUploadSuccess}
+          >
+            {({ open }) => (
+              <button
+                onClick={() => open && open()}
+                disabled={uploading}
+                className="bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700 transition flex items-center gap-1 text-sm disabled:opacity-50"
+              >
+                <UploadIcon size={14} />
+                {uploading ? 'Subiendo...' : 'Agregar foto'}
+              </button>
+            )}
+          </CldUploadWidget>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Componente de Login
@@ -176,7 +352,21 @@ export default function ServiceDirectory() {
       }
       
       const data = await response.json();
-      setProviders(data);
+      
+      // Cargar imágenes para cada proveedor
+      const providersWithImages = await Promise.all(
+        data.map(async (provider: Proveedor) => {
+          try {
+            const imgResponse = await fetch(`/api/proveedores/${provider.id}/imagenes`);
+            const imagenes = imgResponse.ok ? await imgResponse.json() : [];
+            return { ...provider, imagenes };
+          } catch {
+            return { ...provider, imagenes: [] };
+          }
+        })
+      );
+      
+      setProviders(providersWithImages);
     } catch (error) {
       console.error('❌ Error al cargar proveedores:', error);
     } finally {
@@ -598,17 +788,14 @@ export default function ServiceDirectory() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {providers.map((provider: Proveedor) => (
                 <div key={provider.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition">
-                  {provider.foto_url ? (
-                    <img 
-                      src={provider.foto_url} 
-                      alt={provider.nombre}
-                      className="w-full h-48 object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
-                      <Briefcase size={64} className="text-indigo-400" />
-                    </div>
-                  )}
+                  <ImageGallery
+                    images={provider.imagenes || []}
+                    proveedorId={provider.id}
+                    isOwner={isAuthenticated && currentUser?.proveedor_id === provider.id}
+                    usuarioId={currentUser?.id}
+                    onImageAdded={fetchProviders}
+                    onImageDeleted={fetchProviders}
+                  />
                   
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
