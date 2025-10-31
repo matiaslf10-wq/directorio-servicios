@@ -2,40 +2,64 @@ import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// GET - Obtener imágenes de un proveedor
+// GET - Obtener un proveedor específico
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const params = await context.params;
+    const { id } = await params;
+    console.log('📥 GET /api/proveedores/[id] - ID:', id);
+    
     const { data, error } = await supabase
-      .from('proveedor_imagenes')
+      .from('proveedores')
       .select('*')
-      .eq('proveedor_id', params.id)
-      .order('orden', { ascending: true });
+      .eq('id', id)
+      .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error de Supabase:', error);
+      throw error;
+    }
 
-    return NextResponse.json(data || []);
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Proveedor no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ Proveedor encontrado:', data.nombre);
+    
+    return NextResponse.json(data);
   } catch (error) {
     const err = error as Error;
+    console.error('❌ Error al obtener proveedor:', err);
     return NextResponse.json(
-      { error: 'Error al obtener imágenes', details: err.message },
+      { error: 'Error al obtener proveedor', details: err.message },
       { status: 500 }
     );
   }
 }
 
-// POST - Agregar nueva imagen
-export async function POST(
+// PUT - Actualizar un proveedor específico
+export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const params = await context.params;
+    const { id } = await params;
+    console.log('🔄 PUT /api/proveedores/[id] - ID:', id);
+    
     const body = await request.json();
-    const { imagen_url, public_id, usuario_id } = body;
+    const { nombre, servicio, email, telefono, ubicacion, palabras_clave, usuario_id } = body;
+
+    if (!usuario_id) {
+      return NextResponse.json(
+        { error: 'ID de usuario es obligatorio' },
+        { status: 400 }
+      );
+    }
 
     // Verificar que el usuario sea dueño del proveedor
     const { data: usuario } = await supabase
@@ -44,95 +68,103 @@ export async function POST(
       .eq('id', usuario_id)
       .single();
 
-    if (!usuario || usuario.proveedor_id !== parseInt(params.id)) {
+    if (!usuario || usuario.proveedor_id !== parseInt(id)) {
       return NextResponse.json(
-        { error: 'No tienes permiso para agregar imágenes a este proveedor' },
+        { error: 'No tienes permiso para editar este proveedor' },
         { status: 403 }
       );
     }
 
-    // Obtener el orden siguiente
-    const { data: lastImage } = await supabase
-      .from('proveedor_imagenes')
-      .select('orden')
-      .eq('proveedor_id', params.id)
-      .order('orden', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const nuevoOrden = lastImage ? lastImage.orden + 1 : 0;
-
-    // Insertar imagen
+    // Actualizar proveedor
     const { data, error } = await supabase
-      .from('proveedor_imagenes')
-      .insert([{
-        proveedor_id: parseInt(params.id),
-        imagen_url,
-        public_id,
-        orden: nuevoOrden
-      }])
+      .from('proveedores')
+      .update({
+        nombre,
+        servicio,
+        email,
+        telefono,
+        ubicacion,
+        palabras_clave
+      })
+      .eq('id', id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error al actualizar:', error);
+      throw error;
+    }
 
-    return NextResponse.json(data, { status: 201 });
+    console.log('✅ Proveedor actualizado');
+    
+    return NextResponse.json({ 
+      mensaje: 'Proveedor actualizado exitosamente',
+      data 
+    });
   } catch (error) {
     const err = error as Error;
+    console.error('❌ Error:', err);
     return NextResponse.json(
-      { error: 'Error al agregar imagen', details: err.message },
+      { error: 'Error al actualizar proveedor', details: err.message },
       { status: 500 }
     );
   }
 }
 
-// DELETE - Eliminar imagen
-export async function DELETE(request: NextRequest) {
+// DELETE - Eliminar un proveedor específico
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
+    console.log('🗑️ DELETE /api/proveedores/[id] - ID:', id);
+    
     const { searchParams } = new URL(request.url);
-    const imagenId = searchParams.get('imagen_id');
     const usuarioId = searchParams.get('usuario_id');
 
-    if (!imagenId || !usuarioId) {
+    if (!usuarioId) {
       return NextResponse.json(
-        { error: 'Faltan parámetros' },
+        { error: 'ID de usuario es obligatorio' },
         { status: 400 }
       );
     }
 
-    // Verificar permisos
-    const { data: imagen } = await supabase
-      .from('proveedor_imagenes')
-      .select('proveedor_id')
-      .eq('id', imagenId)
-      .single();
-
+    // Verificar que el usuario sea dueño del proveedor
     const { data: usuario } = await supabase
       .from('usuarios')
       .select('proveedor_id')
       .eq('id', usuarioId)
       .single();
 
-    if (!imagen || !usuario || imagen.proveedor_id !== usuario.proveedor_id) {
+    if (!usuario || usuario.proveedor_id !== parseInt(id)) {
       return NextResponse.json(
-        { error: 'No tienes permiso para eliminar esta imagen' },
+        { error: 'No tienes permiso para eliminar este proveedor' },
         { status: 403 }
       );
     }
 
-    // Eliminar imagen
+    // Eliminar proveedor (esto también eliminará el usuario por CASCADE)
     const { error } = await supabase
-      .from('proveedor_imagenes')
+      .from('proveedores')
       .delete()
-      .eq('id', imagenId);
+      .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error al eliminar:', error);
+      throw error;
+    }
 
-    return NextResponse.json({ mensaje: 'Imagen eliminada' });
+    console.log('✅ Proveedor eliminado');
+    
+    return NextResponse.json({ 
+      mensaje: 'Proveedor eliminado exitosamente'
+    });
   } catch (error) {
     const err = error as Error;
+    console.error('❌ Error:', err);
     return NextResponse.json(
-      { error: 'Error al eliminar imagen', details: err.message },
+      { error: 'Error al eliminar proveedor', details: err.message },
       { status: 500 }
     );
   }

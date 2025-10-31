@@ -1,171 +1,69 @@
-// app/api/proveedores/[id]/route.ts - Con Supabase
 import { supabase } from '@/lib/supabase';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// GET - Obtener un proveedor específico
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+
+export async function GET(request: NextRequest) {
   try {
-    const { id } = await params;
-    console.log('📥 GET /api/proveedores/[id] - ID:', id);
-    
-    const { data, error } = await supabase
-      .from('proveedores')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('❌ Error de Supabase:', error);
-      throw error;
-    }
-
-    if (!data) {
-      return NextResponse.json(
-        { error: 'Proveedor no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    console.log('✅ Proveedor encontrado:', data.nombre);
-    
-    return NextResponse.json(data);
-  } catch (error) {
-    const err = error as Error;
-    console.error('❌ Error al obtener proveedor:', err);
-    return NextResponse.json(
-      { error: 'Error al obtener proveedor', details: err.message },
-      { status: 500 }
-    );
-  }
-}
-
-// PUT - Actualizar un proveedor específico
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    console.log('🔄 PUT /api/proveedores/[id] - ID:', id);
-    
-    const body = await request.json();
-    const { nombre, servicio, email, telefono, ubicacion, palabras_clave, usuario_id } = body;
-
-    if (!usuario_id) {
-      return NextResponse.json(
-        { error: 'ID de usuario es obligatorio' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar que el usuario sea dueño del proveedor
-    const { data: usuario } = await supabase
-      .from('usuarios')
-      .select('proveedor_id')
-      .eq('id', usuario_id)
-      .single();
-
-    if (!usuario || usuario.proveedor_id !== parseInt(id)) {
-      return NextResponse.json(
-        { error: 'No tienes permiso para editar este proveedor' },
-        { status: 403 }
-      );
-    }
-
-    // Actualizar proveedor
-    const { data, error } = await supabase
-      .from('proveedores')
-      .update({
-        nombre,
-        servicio,
-        email,
-        telefono,
-        ubicacion,
-        palabras_clave
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error al actualizar:', error);
-      throw error;
-    }
-
-    console.log('✅ Proveedor actualizado');
-    
-    return NextResponse.json({ 
-      mensaje: 'Proveedor actualizado exitosamente',
-      data 
-    });
-  } catch (error) {
-    const err = error as Error;
-    console.error('❌ Error:', err);
-    return NextResponse.json(
-      { error: 'Error al actualizar proveedor', details: err.message },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE - Eliminar un proveedor específico
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    console.log('🗑️ DELETE /api/proveedores/[id] - ID:', id);
+    console.log('========================================');
+    console.log('📥 GET /api/proveedores - INICIO');
+    console.log('🔑 Verificando variables de entorno...');
+    console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Configurada' : '❌ NO CONFIGURADA');
+    console.log('SUPABASE_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Configurada' : '❌ NO CONFIGURADA');
     
     const { searchParams } = new URL(request.url);
-    const usuarioId = searchParams.get('usuario_id');
-
-    if (!usuarioId) {
-      return NextResponse.json(
-        { error: 'ID de usuario es obligatorio' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar que el usuario sea dueño del proveedor
-    const { data: usuario } = await supabase
-      .from('usuarios')
-      .select('proveedor_id')
-      .eq('id', usuarioId)
-      .single();
-
-    if (!usuario || usuario.proveedor_id !== parseInt(id)) {
-      return NextResponse.json(
-        { error: 'No tienes permiso para eliminar este proveedor' },
-        { status: 403 }
-      );
-    }
-
-    // Eliminar proveedor (esto también eliminará el usuario por CASCADE)
-    const { error } = await supabase
-      .from('proveedores')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('❌ Error al eliminar:', error);
-      throw error;
-    }
-
-    console.log('✅ Proveedor eliminado');
+    const search = searchParams.get('search');
     
-    return NextResponse.json({ 
-      mensaje: 'Proveedor eliminado exitosamente'
-    });
+    console.log('🔍 Parámetros de búsqueda:', search || 'Sin filtro');
+    
+    console.log('🔄 Construyendo query de Supabase...');
+    let query = supabase
+      .from('proveedores')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (search) {
+      console.log('🔎 Aplicando filtro de búsqueda:', search);
+      query = query.or(`nombre.ilike.%${search}%,servicio.ilike.%${search}%,ubicacion.ilike.%${search}%,palabras_clave.ilike.%${search}%`);
+    }
+
+    console.log('📡 Ejecutando query en Supabase...');
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('❌ Error de Supabase:', JSON.stringify(error, null, 2));
+      return NextResponse.json(
+        { 
+          error: 'Error en consulta a Supabase', 
+          details: error.message,
+          code: error.code,
+          hint: error.hint 
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Query exitosa. Registros encontrados:', data?.length || 0);
+    console.log('========================================');
+    
+    return NextResponse.json(data || []);
   } catch (error) {
     const err = error as Error;
-    console.error('❌ Error:', err);
+    console.error('========================================');
+    console.error('❌ ERROR CRÍTICO EN GET /api/proveedores');
+    console.error('Tipo:', err.name);
+    console.error('Mensaje:', err.message);
+    console.error('Stack:', err.stack);
+    console.error('========================================');
+    
     return NextResponse.json(
-      { error: 'Error al eliminar proveedor', details: err.message },
+      { 
+        error: 'Error al obtener proveedores', 
+        details: err.message,
+        type: err.name,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      },
       { status: 500 }
     );
   }
