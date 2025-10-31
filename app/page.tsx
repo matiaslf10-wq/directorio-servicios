@@ -123,7 +123,7 @@ function ImageGallery({
   }
 
   return (
-    <div className="relative w-full h-48 bg-gray-100">
+    <div className="relative w-full h-48 bg-gray-900">
       {images.length > 0 ? (
         <>
           <div className="relative w-full h-full">
@@ -131,7 +131,7 @@ function ImageGallery({
               src={images[currentIndex].imagen_url}
               alt={`Imagen ${currentIndex + 1}`}
               fill
-              className="object-cover"
+              className="object-contain"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           </div>
