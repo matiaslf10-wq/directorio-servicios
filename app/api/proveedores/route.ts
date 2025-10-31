@@ -1,178 +1,63 @@
-// app/api/proveedores/route.ts - Con Supabase
+// app/api/proveedores/[id]/route.ts - Con Supabase
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function GET(request: NextRequest) {
+// GET - Obtener un proveedor específico
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    console.log('📥 GET /api/proveedores - Iniciando petición');
+    const { id } = await params;
+    console.log('📥 GET /api/proveedores/[id] - ID:', id);
     
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
-    
-    console.log('🔍 Término de búsqueda:', search || 'Sin filtro');
-    
-    let query = supabase
+    const { data, error } = await supabase
       .from('proveedores')
       .select('*')
-      .order('id', { ascending: false });
+      .eq('id', id)
+      .single();
 
-    if (search) {
-      query = query.or(`nombre.ilike.%${search}%,servicio.ilike.%${search}%,ubicacion.ilike.%${search}%,palabras_clave.ilike.%${search}%`);
-    }
-
-    const { data, error } = await query;
-    
     if (error) {
       console.error('❌ Error de Supabase:', error);
       throw error;
     }
 
-    console.log('✅ Proveedores encontrados:', data?.length || 0);
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Proveedor no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ Proveedor encontrado:', data.nombre);
     
-    return NextResponse.json(data || []);
+    return NextResponse.json(data);
   } catch (error) {
     const err = error as Error;
-    console.error('❌ Error al obtener proveedores:', err);
+    console.error('❌ Error al obtener proveedor:', err);
     return NextResponse.json(
-      { error: 'Error al obtener proveedores', details: err.message },
+      { error: 'Error al obtener proveedor', details: err.message },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+// PUT - Actualizar un proveedor específico
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    console.log('📤 POST /api/proveedores - Iniciando registro');
+    const { id } = await params;
+    console.log('🔄 PUT /api/proveedores/[id] - ID:', id);
     
     const body = await request.json();
-    console.log('📋 Datos recibidos:', body);
-    
-    const { nombre, servicio, email, telefono, ubicacion, palabras_clave, usuario, password } = body;
+    const { nombre, servicio, email, telefono, ubicacion, palabras_clave, usuario_id } = body;
 
-    if (!nombre || !servicio || !email || !telefono || !ubicacion || !palabras_clave || !usuario || !password) {
-      console.log('⚠️ Validación fallida - Campos faltantes');
+    if (!usuario_id) {
       return NextResponse.json(
-        { error: 'Todos los campos son obligatorios' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar si ya existe un proveedor con el mismo email
-    const { data: existingProvider } = await supabase
-      .from('proveedores')
-      .select('id, nombre, email')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (existingProvider) {
-      console.log('⚠️ Email ya registrado:', email);
-      return NextResponse.json(
-        { error: `El email ${email} ya está registrado para ${existingProvider.nombre}` },
-        { status: 409 }
-      );
-    }
-
-    // Verificar si ya existe un proveedor con el mismo teléfono
-    const { data: existingPhone } = await supabase
-      .from('proveedores')
-      .select('id, nombre, telefono')
-      .eq('telefono', telefono)
-      .maybeSingle();
-
-    if (existingPhone) {
-      console.log('⚠️ Teléfono ya registrado:', telefono);
-      return NextResponse.json(
-        { error: `El teléfono ${telefono} ya está registrado para ${existingPhone.nombre}` },
-        { status: 409 }
-      );
-    }
-
-    // Verificar si el nombre de usuario ya existe
-    const { data: existingUser } = await supabase
-      .from('usuarios')
-      .select('id, usuario')
-      .eq('usuario', usuario)
-      .maybeSingle();
-
-    if (existingUser) {
-      console.log('⚠️ Usuario ya existe:', usuario);
-      return NextResponse.json(
-        { error: `El nombre de usuario "${usuario}" ya está en uso` },
-        { status: 409 }
-      );
-    }
-
-    // 1. Crear el proveedor
-    const { data: proveedorData, error: proveedorError } = await supabase
-      .from('proveedores')
-      .insert([{
-        nombre,
-        servicio,
-        email,
-        telefono,
-        ubicacion,
-        palabras_clave
-      }])
-      .select()
-      .single();
-
-    if (proveedorError) {
-      console.error('❌ Error al crear proveedor:', proveedorError);
-      throw proveedorError;
-    }
-
-    console.log('✅ Proveedor creado. ID:', proveedorData.id);
-
-    // 2. Crear el usuario vinculado al proveedor
-    const { data: usuarioData, error: usuarioError } = await supabase
-      .from('usuarios')
-      .insert([{
-        usuario,
-        password, // En producción deberías hashear la contraseña
-        nombre_completo: nombre,
-        email,
-        proveedor_id: proveedorData.id
-      }])
-      .select()
-      .single();
-
-    if (usuarioError) {
-      // Si falla la creación del usuario, eliminar el proveedor
-      console.error('❌ Error al crear usuario:', usuarioError);
-      await supabase.from('proveedores').delete().eq('id', proveedorData.id);
-      throw usuarioError;
-    }
-
-    console.log('✅ Usuario creado. ID:', usuarioData.id);
-    console.log('🔗 Usuario vinculado a proveedor_id:', usuarioData.proveedor_id);
-    
-    return NextResponse.json({ 
-      id: proveedorData.id,
-      usuario_id: usuarioData.id,
-      proveedor_id: usuarioData.proveedor_id,
-      mensaje: 'Proveedor y usuario registrados exitosamente' 
-    }, { status: 201 });
-  } catch (error) {
-    const err = error as Error;
-    console.error('❌ Error al crear proveedor:', err);
-    return NextResponse.json(
-      { error: 'Error al registrar proveedor', details: err.message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    console.log('🔄 PUT /api/proveedores - Actualizando proveedor');
-    
-    const body = await request.json();
-    const { id, nombre, servicio, email, telefono, ubicacion, palabras_clave, usuario_id } = body;
-
-    if (!id || !usuario_id) {
-      return NextResponse.json(
-        { error: 'ID de proveedor y usuario son obligatorios' },
+        { error: 'ID de usuario es obligatorio' },
         { status: 400 }
       );
     }
@@ -184,7 +69,7 @@ export async function PUT(request: NextRequest) {
       .eq('id', usuario_id)
       .single();
 
-    if (!usuario || usuario.proveedor_id !== id) {
+    if (!usuario || usuario.proveedor_id !== parseInt(id)) {
       return NextResponse.json(
         { error: 'No tienes permiso para editar este proveedor' },
         { status: 403 }
@@ -222,6 +107,65 @@ export async function PUT(request: NextRequest) {
     console.error('❌ Error:', err);
     return NextResponse.json(
       { error: 'Error al actualizar proveedor', details: err.message },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Eliminar un proveedor específico
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    console.log('🗑️ DELETE /api/proveedores/[id] - ID:', id);
+    
+    const { searchParams } = new URL(request.url);
+    const usuarioId = searchParams.get('usuario_id');
+
+    if (!usuarioId) {
+      return NextResponse.json(
+        { error: 'ID de usuario es obligatorio' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar que el usuario sea dueño del proveedor
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('proveedor_id')
+      .eq('id', usuarioId)
+      .single();
+
+    if (!usuario || usuario.proveedor_id !== parseInt(id)) {
+      return NextResponse.json(
+        { error: 'No tienes permiso para eliminar este proveedor' },
+        { status: 403 }
+      );
+    }
+
+    // Eliminar proveedor (esto también eliminará el usuario por CASCADE)
+    const { error } = await supabase
+      .from('proveedores')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('❌ Error al eliminar:', error);
+      throw error;
+    }
+
+    console.log('✅ Proveedor eliminado');
+    
+    return NextResponse.json({ 
+      mensaje: 'Proveedor eliminado exitosamente'
+    });
+  } catch (error) {
+    const err = error as Error;
+    console.error('❌ Error:', err);
+    return NextResponse.json(
+      { error: 'Error al eliminar proveedor', details: err.message },
       { status: 500 }
     );
   }
