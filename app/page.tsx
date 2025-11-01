@@ -337,6 +337,8 @@ export default function ServiceDirectory() {
     usuario: '',
     password: ''
   });
+  
+  const formRef = useRef<HTMLDivElement>(null);
 
   const fetchProviders = useCallback(async () => {
     try {
@@ -389,6 +391,15 @@ export default function ServiceDirectory() {
     fetchProviders();
   }, [fetchProviders]);
 
+  // Scroll automático cuando se muestra el formulario
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [showForm]);
+
   const handleLogin = (user: Usuario) => {
     console.log('👤 Usuario logueado:', user);
     console.log('🆔 Proveedor ID:', user.proveedor_id);
@@ -424,6 +435,11 @@ export default function ServiceDirectory() {
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔵 handleSubmit ejecutado');
+    console.log('📝 editingProvider:', editingProvider);
+    console.log('📋 formData:', formData);
     
     if (!formData.nombre || !formData.servicio || !formData.email || 
         !formData.telefono || !formData.ubicacion || !formData.palabras_clave) {
@@ -446,6 +462,7 @@ export default function ServiceDirectory() {
       setLoading(true);
 
       if (editingProvider) {
+        console.log('✏️ Modo EDICIÓN - PUT a /api/proveedores/' + editingProvider.id);
         // ✅ CORRECCIÓN: Actualizar proveedor existente - INCLUIR ID EN LA URL
         const response = await fetch(`/api/proveedores/${editingProvider.id}`, {
           method: 'PUT',
@@ -490,6 +507,7 @@ export default function ServiceDirectory() {
         setTimeout(() => fetchProviders(), 500);
 
       } else {
+        console.log('➕ Modo REGISTRO - POST a /api/proveedores');
         // Crear nuevo proveedor con usuario
         const response = await fetch('/api/proveedores', {
           method: 'POST',
@@ -498,6 +516,8 @@ export default function ServiceDirectory() {
           },
           body: JSON.stringify(formData),
         });
+
+        console.log('📡 Response status:', response.status);
 
         if (!response.ok) {
           const data = await response.json();
@@ -510,6 +530,7 @@ export default function ServiceDirectory() {
         }
 
         const data = await response.json();
+        console.log('✅ Registro exitoso:', data);
         alert('¡Proveedor y usuario registrados exitosamente! Ahora puedes iniciar sesión.');
         setShowForm(false);
         setFormData({
@@ -560,14 +581,6 @@ export default function ServiceDirectory() {
       password: ''
     });
     setShowForm(true);
-    
-    // Scroll suave hacia el formulario
-    setTimeout(() => {
-      const formElement = document.getElementById('formulario-edicion');
-      if (formElement) {
-        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
   };
 
   const handleCancelEdit = () => {
@@ -648,7 +661,17 @@ export default function ServiceDirectory() {
             {!showForm && (
               <button
                 onClick={() => {
-                  setEditingProvider(null);
+                  setEditingProvider(null); // Asegurar que NO está en modo edición
+                  setFormData({
+                    nombre: '',
+                    servicio: '',
+                    email: '',
+                    telefono: '',
+                    ubicacion: '',
+                    palabras_clave: '',
+                    usuario: '',
+                    password: ''
+                  });
                   setShowForm(true);
                 }}
                 className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 font-semibold"
@@ -663,7 +686,7 @@ export default function ServiceDirectory() {
 
         {/* Formulario de Registro/Edición */}
         {showForm && (
-          <div id="formulario-edicion" className="bg-white rounded-lg shadow-lg p-8 mb-8">
+          <div ref={formRef} className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
                 {editingProvider ? 'Editar Mi Perfil' : 'Registrar Nuevo Proveedor'}
