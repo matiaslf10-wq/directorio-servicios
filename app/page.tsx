@@ -434,41 +434,49 @@ export default function ServiceDirectory() {
       setLoading(true);
 
       if (editingProvider) {
-        // Actualizar proveedor existente
-        const response = await fetch('/api/proveedores', {
+        // ✅ CORRECCIÓN: Actualizar proveedor existente - INCLUIR ID EN LA URL
+        const response = await fetch(`/api/proveedores/${editingProvider.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: editingProvider.id,
-            usuario_id: currentUser?.id,
-            ...formData
+            nombre: formData.nombre,
+            servicio: formData.servicio,
+            email: formData.email,
+            telefono: formData.telefono,
+            ubicacion: formData.ubicacion,
+            palabras_clave: formData.palabras_clave,
+            usuario_id: currentUser?.id
           }),
         });
 
-        const data = await response.json();
-
-        if (response.ok) {
-          alert('¡Perfil actualizado exitosamente!');
-          setEditingProvider(null);
-          setShowForm(false);
-          setFormData({
-            nombre: '',
-            servicio: '',
-            email: '',
-            telefono: '',
-            ubicacion: '',
-            palabras_clave: '',
-            usuario: '',
-            password: ''
-          });
-          setTimeout(() => fetchProviders(), 500);
-        } else if (response.status === 403) {
-          alert('No tienes permiso para editar este proveedor');
-        } else {
-          alert(`Error: ${data.error}`);
+        if (!response.ok) {
+          const data = await response.json();
+          if (response.status === 403) {
+            alert('No tienes permiso para editar este proveedor');
+          } else {
+            alert(`Error: ${data.error || 'Error al actualizar'}`);
+          }
+          return;
         }
+
+        const data = await response.json();
+        alert('¡Perfil actualizado exitosamente!');
+        setEditingProvider(null);
+        setShowForm(false);
+        setFormData({
+          nombre: '',
+          servicio: '',
+          email: '',
+          telefono: '',
+          ubicacion: '',
+          palabras_clave: '',
+          usuario: '',
+          password: ''
+        });
+        setTimeout(() => fetchProviders(), 500);
+
       } else {
         // Crear nuevo proveedor con usuario
         const response = await fetch('/api/proveedores', {
@@ -479,27 +487,30 @@ export default function ServiceDirectory() {
           body: JSON.stringify(formData),
         });
 
-        const data = await response.json();
-
-        if (response.ok) {
-          alert('¡Proveedor y usuario registrados exitosamente! Ahora puedes iniciar sesión.');
-          setShowForm(false);
-          setFormData({
-            nombre: '',
-            servicio: '',
-            email: '',
-            telefono: '',
-            ubicacion: '',
-            palabras_clave: '',
-            usuario: '',
-            password: ''
-          });
-          setTimeout(() => fetchProviders(), 500);
-        } else if (response.status === 409) {
-          alert(`⚠️ ${data.error}`);
-        } else {
-          alert(`Error: ${data.error || 'Error desconocido'}`);
+        if (!response.ok) {
+          const data = await response.json();
+          if (response.status === 409) {
+            alert(`⚠️ ${data.error}`);
+          } else {
+            alert(`Error: ${data.error || 'Error desconocido'}`);
+          }
+          return;
         }
+
+        const data = await response.json();
+        alert('¡Proveedor y usuario registrados exitosamente! Ahora puedes iniciar sesión.');
+        setShowForm(false);
+        setFormData({
+          nombre: '',
+          servicio: '',
+          email: '',
+          telefono: '',
+          ubicacion: '',
+          palabras_clave: '',
+          usuario: '',
+          password: ''
+        });
+        setTimeout(() => fetchProviders(), 500);
       }
     } catch (error) {
       console.error('❌ Error:', error);
