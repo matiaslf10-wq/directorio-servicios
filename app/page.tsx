@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, UserPlus, Briefcase, Mail, Phone, MapPin, Loader, LogOut, Edit, X, ChevronLeft, ChevronRight, Upload as UploadIcon, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { CldUploadWidget } from 'next-cloudinary';
@@ -401,6 +401,18 @@ export default function ServiceDirectory() {
     localStorage.removeItem('usuario');
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setShowForm(false); // Cerrar formulario al cerrar sesión
+    setEditingProvider(null);
+    setFormData({
+      nombre: '',
+      servicio: '',
+      email: '',
+      telefono: '',
+      ubicacion: '',
+      palabras_clave: '',
+      usuario: '',
+      password: ''
+    });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -548,6 +560,14 @@ export default function ServiceDirectory() {
       password: ''
     });
     setShowForm(true);
+    
+    // Scroll suave hacia el formulario
+    setTimeout(() => {
+      const formElement = document.getElementById('formulario-edicion');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const handleCancelEdit = () => {
@@ -643,7 +663,7 @@ export default function ServiceDirectory() {
 
         {/* Formulario de Registro/Edición */}
         {showForm && (
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+          <div id="formulario-edicion" className="bg-white rounded-lg shadow-lg p-8 mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
                 {editingProvider ? 'Editar Mi Perfil' : 'Registrar Nuevo Proveedor'}
